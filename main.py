@@ -57,15 +57,21 @@ async def on_reaction_add(reaction, user):
                     print("Message already in starboard")
                     return
 
+              # **NEW** Send a message with reaction count and channel name (outside of the embed)
+            await starboard_channel.send(
+                f"Message in #{reaction.message.channel.name} has reached {reaction.count} {CUSTOM_STAR_EMOJI_DISPLAY}!"
+            )
+
             # Create the embed for the starboard, with message content at the top
             embed = discord.Embed(description=f"{reaction.message.content}", color=discord.Color.gold())  # Message at top
             embed.set_author(name=reaction.message.author.display_name, icon_url=reaction.message.author.display_avatar.url)
             embed.add_field(name="Jump to message", value=f"[Click here]({reaction.message.jump_url})")
             
             # Add the reaction count and channel name to the embed, using the custom emoji
-            embed.add_field(name="Reactions", value=f"{reaction.count} {CUSTOM_STAR_EMOJI_DISPLAY}", inline=True)
-            embed.add_field(name="Channel", value=f"#{reaction.message.channel.name}", inline=True)
-            
+            # embed.add_field(name="Reactions", value=f"{reaction.count} {CUSTOM_STAR_EMOJI_DISPLAY}", inline=True)
+            # embed.add_field(name="Channel", value=f"#{reaction.message.channel.name}", inline=True)
+
+            # Add other fields within the embed
             embed.set_footer(text=f"ID: {reaction.message.id}")
 
             # Check if there are any attachments (images or videos)
@@ -77,6 +83,10 @@ async def on_reaction_add(reaction, user):
                 elif attachment.content_type.startswith("video/"):
                     # If it's a video, just add the video URL (Discord will embed it automatically)
                     embed.add_field(name="Attached video", value=attachment.url)
+             elif reaction.message.stickers:  # Check for stickers
+                sticker = reaction.message.stickers[0]
+                embed.add_field(name="Attached sticker", value=f"{sticker.name}", inline=True)
+                # Optionally, you can provide a URL if you need to display or link the sticker
 
             # Send the embed to the starboard channel
             await starboard_channel.send(embed=embed)
