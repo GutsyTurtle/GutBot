@@ -1,0 +1,15 @@
+# Essential packages for your Discord bot
+discord.py==2.4.0
+aiohttp==3.10.9
+requests==2.32.3
+
+# Remove these if you're not using TensorFlow or ML
+# tensorboard==2.12.2
+# tensorboard-data-server==0.7.0
+# tensorboard-plugin-wit==1.8.1  # Optional, remove if not using it
+# tensorflow==2.12.0
+# tensorflow-estimator==2.12.0
+# tensorflow-io-gcs-filesystem==0.31.0  # Optional, remove if not using Google Cloud Storage
+
+# Other potential dependencies (remove if not needed)
+# any other packages you may require for your bot functionality
