@@ -66,6 +66,11 @@ async def on_reaction_add(reaction, user):
             embed = discord.Embed(description=f"{reaction.message.content}", color=discord.Color.gold())  # Message at top
             embed.set_author(name=reaction.message.author.display_name, icon_url=reaction.message.author.display_avatar.url)
             embed.add_field(name="Jump to message", value=f"[Click here]({reaction.message.jump_url})")
+
+            # Add the reaction count dynamically within the embed
+            embed.add_field(name="Reactions", value=f"{reaction.count} {CUSTOM_STAR_EMOJI_DISPLAY}", inline=True)
+            embed.add_field(name="Channel", value=f"#{reaction.message.channel.name}", inline=True)
+            embed.set_footer(text=f"ID: {reaction.message.id}")
             
             # Add the reaction count and channel name to the embed, using the custom emoji
             # embed.add_field(name="Reactions", value=f"{reaction.count} {CUSTOM_STAR_EMOJI_DISPLAY}", inline=True)
