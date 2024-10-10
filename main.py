@@ -83,11 +83,13 @@ async def on_reaction_add(reaction, user):
                 elif attachment.content_type.startswith("video/"):
                     # If it's a video, just add the video URL (Discord will embed it automatically)
                     embed.add_field(name="Attached video", value=attachment.url)
-             elif reaction.message.stickers:  # Check for stickers
+
+            # Proper indentation for stickers handling
+            if reaction.message.stickers:  # Check for stickers
                 sticker = reaction.message.stickers[0]
                 embed.add_field(name="Attached sticker", value=f"{sticker.name}", inline=True)
-                # Optionally, you can provide a URL if you need to display or link the sticker
 
+            
             # Send the embed to the starboard channel
             await starboard_channel.send(embed=embed)
             print(f"Message from {reaction.message.author} posted to starboard with media!")
