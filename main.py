@@ -58,7 +58,7 @@ async def on_reaction_add(reaction, user):
                     return
 
             # Create the embed for the starboard, with message content at the top
-            embed = discord.Embed(description=f"**{reaction.message.content}**", color=discord.Color.gold())  # Message at top
+            embed = discord.Embed(description=f"{reaction.message.content}", color=discord.Color.gold())  # Message at top
             embed.set_author(name=reaction.message.author.display_name, icon_url=reaction.message.author.display_avatar.url)
             embed.add_field(name="Jump to message", value=f"[Click here]({reaction.message.jump_url})")
             
