@@ -14,78 +14,62 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 # Get the token from an environment variable
 TOKEN = os.getenv('DISCORD_BOT_TOKEN')
 
-# Variables for emoji, channel, and star limit selection
-STARBOARD_CHANNEL_ID = None
-CUSTOM_STAR_EMOJI_ID = None
-CUSTOM_STAR_EMOJI_DISPLAY = None
+# Constants (default values)
+STARBOARD_CHANNEL_ID = None  # To be set during setup
+CUSTOM_STAR_EMOJI_ID = None  # To be set during setup
 STAR_THRESHOLD = 3  # Default threshold
 
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user}!')
 
-@bot.command()
-async def set_starboard(ctx):
-    """Prompts the user to select a custom emoji, starboard channel, and star limit."""
-    # Step 1: Prompt for emoji
-    await ctx.send("React to this message with the emoji you'd like to use for the starboard!")
+@bot.event
+async def on_guild_join(guild):
+    # Find a text channel where the bot can send messages
+    general_channel = next((channel for channel in guild.text_channels if channel.permissions_for(guild.me).send_messages), None)
+    
+    if general_channel:
+        # Send a setup message
+        await general_channel.send(
+            "Hello! Thanks for inviting me! :star:\n\n"
+            "To set up the starboard, please respond to the following commands:\n"
+            "1. **Set the starboard channel** using: `!setchannel <channel_id>`.\n"
+            "2. **Set the emoji ID** using: `!setemoji <emoji_id>`.\n"
+            "3. **Set the reaction threshold** using: `!setthreshold <number>`."
+        )
 
-    def emoji_check(reaction, user):
-        return user == ctx.author and reaction.message.id == ctx.message.id
+@bot.command(name="setchannel")
+async def set_channel(ctx, channel_id: int):
+    global STARBOARD_CHANNEL_ID
+    STARBOARD_CHANNEL_ID = channel_id
+    await ctx.send(f"Starboard channel set to <#{channel_id}>.")
 
-    try:
-        reaction, user = await bot.wait_for("reaction_add", timeout=30.0, check=emoji_check)
-        global CUSTOM_STAR_EMOJI_ID, CUSTOM_STAR_EMOJI_DISPLAY
+@bot.command(name="setemoji")
+async def set_emoji(ctx, emoji_id: int):
+    global CUSTOM_STAR_EMOJI_ID
+    CUSTOM_STAR_EMOJI_ID = emoji_id
+    await ctx.send(f"Starboard emoji set to <:{emoji_id}>.")
 
-        if isinstance(reaction.emoji, discord.Emoji):
-            CUSTOM_STAR_EMOJI_ID = reaction.emoji.id
-            CUSTOM_STAR_EMOJI_DISPLAY = str(reaction.emoji)
-            await ctx.send(f"Custom star emoji set to {CUSTOM_STAR_EMOJI_DISPLAY}!")
-        else:
-            await ctx.send("Please react with a custom emoji.")
-            return
-    except asyncio.TimeoutError:
-        await ctx.send("You didn't react in time!")
-        return
-
-    # Step 2: Prompt for starboard channel
-    await ctx.send("Now, please mention the channel you want to use for the starboard.")
-
-    def channel_check(message):
-        return message.author == ctx.author and message.channel == ctx.channel and message.channel_mentions
-
-    try:
-        msg = await bot.wait_for("message", timeout=30.0, check=channel_check)
-        global STARBOARD_CHANNEL_ID
-        STARBOARD_CHANNEL_ID = msg.channel_mentions[0].id
-        await ctx.send(f"Starboard channel set to {msg.channel_mentions[0].mention}!")
-    except asyncio.TimeoutError:
-        await ctx.send("You didn't mention a channel in time!")
-        return
-
-    # Step 3: Prompt for star threshold
-    await ctx.send("Please enter the minimum number of reactions needed for a message to reach the starboard.")
-
-    def threshold_check(message):
-        return message.author == ctx.author and message.channel == ctx.channel and message.content.isdigit()
-
-    try:
-        msg = await bot.wait_for("message", timeout=30.0, check=threshold_check)
-        global STAR_THRESHOLD
-        STAR_THRESHOLD = int(msg.content)
-        await ctx.send(f"Star threshold set to {STAR_THRESHOLD}!")
-    except asyncio.TimeoutError:
-        await ctx.send("You didn't enter a valid star threshold in time!")
-        return
+@bot.command(name="setthreshold")
+async def set_threshold(ctx, threshold: int):
+    global STAR_THRESHOLD
+    STAR_THRESHOLD = threshold
+    await ctx.send(f"Star threshold set to {threshold} reactions.")
 
 @bot.event
 async def on_reaction_add(reaction, user):
+    # Debugging - See if the reaction event is detected
+    print(f"Reaction added by {user} to message {reaction.message.id} in {reaction.message.channel.name}")
+
     # Ignore bot reactions
     if user.bot:
+        print("Ignoring reaction from a bot.")
         return
 
     # Check if the reaction is the custom star emoji
-    if CUSTOM_STAR_EMOJI_ID and isinstance(reaction.emoji, discord.Emoji) and reaction.emoji.id == CUSTOM_STAR_EMOJI_ID:
+    if isinstance(reaction.emoji, discord.Emoji) and reaction.emoji.id == CUSTOM_STAR_EMOJI_ID:
+        print(f"Custom emoji {reaction.emoji.name} matched!")
+        
         # Ensure the reaction count meets the threshold
         if reaction.count >= STAR_THRESHOLD:
             starboard_channel = bot.get_channel(STARBOARD_CHANNEL_ID)
@@ -99,20 +83,22 @@ async def on_reaction_add(reaction, user):
                     print("Message already in starboard")
                     return
 
-            # Post about the starboard status
+            # **NEW** Send a message with reaction count and channel name (outside of the embed)
             await starboard_channel.send(
-                f"Message in #{reaction.message.channel.name} has reached {reaction.count} {CUSTOM_STAR_EMOJI_DISPLAY}!"
+                f"Message in #{reaction.message.channel.name} has reached {reaction.count} <:raywheeze:{CUSTOM_STAR_EMOJI_ID}>!"
             )
 
-            # Create the embed for the starboard
-            embed = discord.Embed(description=f"{reaction.message.content}", color=discord.Color.gold())
+            # Create the embed for the starboard, with message content at the top
+            embed = discord.Embed(description=f"{reaction.message.content}", color=discord.Color.gold())  # Message at top
             embed.set_author(name=reaction.message.author.display_name, icon_url=reaction.message.author.display_avatar.url)
             embed.add_field(name="Jump to message", value=f"[Click here]({reaction.message.jump_url})")
-            embed.add_field(name="Reactions", value=f"{reaction.count} {CUSTOM_STAR_EMOJI_DISPLAY}", inline=True)
+
+            # Add the reaction count dynamically within the embed
+            embed.add_field(name="Reactions", value=f"{reaction.count} <:raywheeze:{CUSTOM_STAR_EMOJI_ID}>", inline=True)
             embed.add_field(name="Channel", value=f"#{reaction.message.channel.name}", inline=True)
             embed.set_footer(text=f"ID: {reaction.message.id}")
 
-            # Handle attachments and stickers
+            # Check if there are any attachments (images or videos)
             if reaction.message.attachments:
                 attachment = reaction.message.attachments[0]
                 if attachment.content_type.startswith("image/"):
@@ -120,7 +106,8 @@ async def on_reaction_add(reaction, user):
                 elif attachment.content_type.startswith("video/"):
                     embed.add_field(name="Attached video", value=attachment.url)
 
-            if reaction.message.stickers:
+            # Proper indentation for stickers handling
+            if reaction.message.stickers:  # Check for stickers
                 sticker = reaction.message.stickers[0]
                 embed.add_field(name="Attached sticker", value=f"{sticker.name}", inline=True)
 
@@ -132,4 +119,3 @@ async def on_reaction_add(reaction, user):
 
 # Run the bot with your token
 bot.run(TOKEN)
-
