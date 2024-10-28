@@ -80,7 +80,7 @@ async def on_reaction_add(reaction, user):
         return
 
     # Determine if we’re using the default star emoji or a custom emoji
-    is_default_star = (reaction.emoji == "⭐" || "🌟" || "🦐" || "🐢")  # Adjust based on your default choice
+    is_default_star = (reaction.emoji == "⭐", "🌟", "🦐", "🐢")  # Adjust based on your default choice
 
     # Set the emoji display based on whether it's custom or default
     emoji_display = "⭐" if is_default_star else f"<:{reaction.emoji.name}:{reaction.emoji.id}>"
