@@ -45,10 +45,24 @@ async def set_channel(ctx, channel_id: int):
     await ctx.send(f"Starboard channel set to <#{channel_id}>.")
 
 @bot.command(name="setemoji")
-async def set_emoji(ctx, emoji_id: int):
+async def set_emoji(ctx, emoji: str):
     global CUSTOM_STAR_EMOJI_ID
-    CUSTOM_STAR_EMOJI_ID = emoji_id
-    await ctx.send(f"Starboard emoji set to <:{emoji_id}>.")
+    
+    # Check if the emoji is a custom emoji
+    if emoji.startswith("<:") and emoji.endswith(">"):  # Custom emoji format
+        emoji_id = emoji.split(":")[-1][:-1]  # Extract the emoji ID
+        try:
+            # Convert emoji_id to an integer
+            CUSTOM_STAR_EMOJI_ID = int(emoji_id)
+            await ctx.send(f"Starboard emoji set to {emoji}.")  # This will display the emoji correctly
+        except ValueError:
+            await ctx.send("Invalid custom emoji provided.")
+    elif emoji in ["⭐", "🌟"]:  # Check for default star emojis
+        CUSTOM_STAR_EMOJI_ID = None  # Indicates we are using a default emoji
+        await ctx.send(f"Default star emoji set to {emoji}.")  # This will also display the emoji correctly
+    else:
+        await ctx.send("Please provide a valid custom or default star emoji.")
+
 
 @bot.command(name="setthreshold")
 async def set_threshold(ctx, threshold: int):
