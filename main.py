@@ -71,69 +71,63 @@ async def set_threshold(ctx, threshold: int):
     await ctx.send(f"Star threshold set to {threshold} reactions.")
 
 @bot.event
-@bot.event
 async def on_reaction_add(reaction, user):
-    # Debugging - See if the reaction event is detected
+    # Debugging - Check reaction and user
     print(f"Reaction added by {user} to message {reaction.message.id} in {reaction.message.channel.name}")
 
     # Ignore bot reactions
     if user.bot:
-        print("Ignoring reaction from a bot.")
         return
 
-    # Check if the reaction is the custom star emoji or the default star emoji
-    is_custom_star = isinstance(reaction.emoji, discord.Emoji) and reaction.emoji.id == CUSTOM_STAR_EMOJI_ID
-    is_default_star = str(reaction.emoji) == "⭐"  # Change this to the star emoji you want to use
-    
-    if is_custom_star or is_default_star:
-        print("Star emoji matched!")
+    # Determine if we’re using the default star emoji or a custom emoji
+    is_default_star = (reaction.emoji == "⭐")  # Adjust based on your default choice
 
-        # Ensure the reaction count meets the threshold
-        if reaction.count >= STAR_THRESHOLD:
-            starboard_channel = bot.get_channel(STARBOARD_CHANNEL_ID)
-            if not starboard_channel:
-                print("Starboard channel not found!")
+    # Set the emoji display based on whether it's custom or default
+    emoji_display = "⭐" if is_default_star else f"<:{reaction.emoji.name}:{reaction.emoji.id}>"
+    
+    # Ensure the reaction count meets the threshold
+    if reaction.count >= STAR_THRESHOLD:
+        starboard_channel = bot.get_channel(STARBOARD_CHANNEL_ID)
+        if not starboard_channel:
+            print("Starboard channel not found!")
+            return
+
+        # Check if the message is already in the starboard
+        async for message in starboard_channel.history(limit=200):
+            if message.embeds and message.embeds[0].footer.text == f"ID: {reaction.message.id}":
+                print("Message already in starboard")
                 return
 
-            # Check if the message is already in the starboard
-            async for message in starboard_channel.history(limit=200):
-                if message.embeds and message.embeds[0].footer.text == f"ID: {reaction.message.id}":
-                    print("Message already in starboard")
-                    return
+        # Post the reaction count and channel name
+        await starboard_channel.send(
+            f"Message in #{reaction.message.channel.name} has reached {reaction.count} {emoji_display}!"
+        )
 
-            # Send a message with reaction count and channel name (outside of the embed)
-            await starboard_channel.send(
-                f"Message in #{reaction.message.channel.name} has reached {reaction.count} {'⭐' if is_default_star else CUSTOM_STAR_EMOJI_DISPLAY}!"
-            )
+        # Create the embed for the starboard
+        embed = discord.Embed(description=f"{reaction.message.content}", color=discord.Color.gold())
+        embed.set_author(name=reaction.message.author.display_name, icon_url=reaction.message.author.display_avatar.url)
+        embed.add_field(name="Jump to message", value=f"[Click here]({reaction.message.jump_url})")
+        embed.add_field(name="Reactions", value=f"{reaction.count} {emoji_display}", inline=True)
+        embed.add_field(name="Channel", value=f"#{reaction.message.channel.name}", inline=True)
+        embed.set_footer(text=f"ID: {reaction.message.id}")
 
-            # Create the embed for the starboard, with message content at the top
-            embed = discord.Embed(description=f"{reaction.message.content}", color=discord.Color.gold())
-            embed.set_author(name=reaction.message.author.display_name, icon_url=reaction.message.author.display_avatar.url)
-            embed.add_field(name="Jump to message", value=f"[Click here]({reaction.message.jump_url})")
+        # Check for attachments (images or videos)
+        if reaction.message.attachments:
+            attachment = reaction.message.attachments[0]
+            if attachment.content_type.startswith("image/"):
+                embed.set_image(url=attachment.url)
+            elif attachment.content_type.startswith("video/"):
+                embed.add_field(name="Attached video", value=attachment.url)
 
-            # Add the reaction count dynamically within the embed
-            embed.add_field(name="Reactions", value=f"{reaction.count} {'⭐' if is_default_star else CUSTOM_STAR_EMOJI_DISPLAY}", inline=True)
-            embed.add_field(name="Channel", value=f"#{reaction.message.channel.name}", inline=True)
-            embed.set_footer(text=f"ID: {reaction.message.id}")
+        # Check for stickers
+        if reaction.message.stickers:
+            sticker = reaction.message.stickers[0]
+            embed.add_field(name="Attached sticker", value=f"{sticker.name}", inline=True)
 
-            # Check if there are any attachments (images or videos)
-            if reaction.message.attachments:
-                attachment = reaction.message.attachments[0]
-                if attachment.content_type.startswith("image/"):
-                    embed.set_image(url=attachment.url)
-                elif attachment.content_type.startswith("video/"):
-                    embed.add_field(name="Attached video", value=attachment.url)
-
-            # Proper indentation for stickers handling
-            if reaction.message.stickers:  # Check for stickers
-                sticker = reaction.message.stickers[0]
-                embed.add_field(name="Attached sticker", value=f"{sticker.name}", inline=True)
-
-            # Send the embed to the starboard channel
-            await starboard_channel.send(embed=embed)
-            print(f"Message from {reaction.message.author} posted to starboard with media!")
-        else:
-            print(f"Reaction count ({reaction.count}) did not meet the threshold ({STAR_THRESHOLD}).")
-
+        # Send the embed to the starboard channel
+        await starboard_channel.send(embed=embed)
+        print(f"Message from {reaction.message.author} posted to starboard with media!")
+    else:
+        print(f"Reaction count ({reaction.count}) did not meet the threshold ({STAR_THRESHOLD}).")
 # Run the bot with your token
 bot.run(TOKEN)
