@@ -57,7 +57,7 @@ async def set_emoji(ctx, emoji: str):
             await ctx.send(f"Starboard emoji set to {emoji}.")  # This will display the emoji correctly
         except ValueError:
             await ctx.send("Invalid custom emoji provided.")
-    elif emoji in ["⭐", "🌟"]:  # Check for default star emojis
+    elif emoji in ["⭐", "🌟", "🦐", "🐢"]:  # Check for default star emojis
         CUSTOM_STAR_EMOJI_ID = None  # Indicates we are using a default emoji
         await ctx.send(f"Default star emoji set to {emoji}.")  # This will also display the emoji correctly
     else:
