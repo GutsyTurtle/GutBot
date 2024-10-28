@@ -57,6 +57,7 @@ async def set_threshold(ctx, threshold: int):
     await ctx.send(f"Star threshold set to {threshold} reactions.")
 
 @bot.event
+@bot.event
 async def on_reaction_add(reaction, user):
     # Debugging - See if the reaction event is detected
     print(f"Reaction added by {user} to message {reaction.message.id} in {reaction.message.channel.name}")
@@ -66,10 +67,13 @@ async def on_reaction_add(reaction, user):
         print("Ignoring reaction from a bot.")
         return
 
-    # Check if the reaction is the custom star emoji
-    if isinstance(reaction.emoji, discord.Emoji) and reaction.emoji.id == CUSTOM_STAR_EMOJI_ID:
-        print(f"Custom emoji {reaction.emoji.name} matched!")
-        
+    # Check if the reaction is the custom star emoji or the default star emoji
+    is_custom_star = isinstance(reaction.emoji, discord.Emoji) and reaction.emoji.id == CUSTOM_STAR_EMOJI_ID
+    is_default_star = str(reaction.emoji) == "⭐"  # Change this to the star emoji you want to use
+    
+    if is_custom_star or is_default_star:
+        print("Star emoji matched!")
+
         # Ensure the reaction count meets the threshold
         if reaction.count >= STAR_THRESHOLD:
             starboard_channel = bot.get_channel(STARBOARD_CHANNEL_ID)
@@ -83,18 +87,18 @@ async def on_reaction_add(reaction, user):
                     print("Message already in starboard")
                     return
 
-            # **NEW** Send a message with reaction count and channel name (outside of the embed)
+            # Send a message with reaction count and channel name (outside of the embed)
             await starboard_channel.send(
-                f"Message in #{reaction.message.channel.name} has reached {reaction.count} <:raywheeze:{CUSTOM_STAR_EMOJI_ID}>!"
+                f"Message in #{reaction.message.channel.name} has reached {reaction.count} {'⭐' if is_default_star else CUSTOM_STAR_EMOJI_DISPLAY}!"
             )
 
             # Create the embed for the starboard, with message content at the top
-            embed = discord.Embed(description=f"{reaction.message.content}", color=discord.Color.gold())  # Message at top
+            embed = discord.Embed(description=f"{reaction.message.content}", color=discord.Color.gold())
             embed.set_author(name=reaction.message.author.display_name, icon_url=reaction.message.author.display_avatar.url)
             embed.add_field(name="Jump to message", value=f"[Click here]({reaction.message.jump_url})")
 
             # Add the reaction count dynamically within the embed
-            embed.add_field(name="Reactions", value=f"{reaction.count} <:raywheeze:{CUSTOM_STAR_EMOJI_ID}>", inline=True)
+            embed.add_field(name="Reactions", value=f"{reaction.count} {'⭐' if is_default_star else CUSTOM_STAR_EMOJI_DISPLAY}", inline=True)
             embed.add_field(name="Channel", value=f"#{reaction.message.channel.name}", inline=True)
             embed.set_footer(text=f"ID: {reaction.message.id}")
 
