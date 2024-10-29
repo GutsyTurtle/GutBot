@@ -102,11 +102,30 @@ async def on_reaction_add(reaction, user):
             if reaction.count >= threshold:
                 channel = reaction.message.guild.get_channel(channel_id)
                 if channel:
-                    await channel.send(
-                        f"Message in #{reaction.message.channel.name} has reached {reaction.count} {emoji}! "
-                        f"Message: {reaction.message.jump_url}"
+                    embed = discord.Embed(
+                        title="🌟 Starred Message",
+                        description=reaction.message.content or "[Message has no text]",
+                        color=discord.Color.gold()
                     )
-                    print(f"Message sent to {channel.name}!")  # Debug print
+                    embed.set_author(name=str(reaction.message.author), icon_url=reaction.message.author.avatar.url)
+                    embed.add_field(name="Channel", value=f"<#{reaction.message.channel.id}>", inline=True)
+                    embed.add_field(name="Stars", value=str(reaction.count), inline=True)
+                    embed.add_field(name="Link to Message", value=f"[Jump to Message]({reaction.message.jump_url})", inline=False)
+
+                    # Check for images and videos
+                    if reaction.message.attachments:
+                        for attachment in reaction.message.attachments:
+                            if attachment.url.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                                embed.set_image(url=attachment.url)  # Embed first image
+                                break
+                        # Add a note if there are more attachments or videos
+                        extra_attachments = [att.url for att in reaction.message.attachments if not att.url.endswith(('png', 'jpg', 'jpeg', 'gif', 'webp'))]
+                        if extra_attachments:
+                            embed.add_field(name="Additional Media", value="\n".join(extra_attachments), inline=False)
+
+                    embed.set_footer(text="Starboard Bot")
+                    await channel.send(embed=embed)
+                    print("Embed with media sent to starboard channel.")
                 else:
                     print(f"Channel ID '{channel_id}' not found.")
             else:
