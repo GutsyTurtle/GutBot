@@ -89,12 +89,12 @@ async def on_reaction_add(reaction, user):
         if str(reaction.emoji) == emoji:
             print(f"Emoji matches. Current count: {reaction.count}, Threshold: {threshold}")  # Debug print
             if reaction.count == threshold:
-                channel = discord.utils.get(reaction.message.guild.text_channels, name=channel_name.strip('#'))
+                channel = reaction.message.guild.get_channel(config["channel_id"])
                 if channel:
                     await channel.send(f"Message in #{reaction.message.channel.name} has reached {reaction.count} {emoji}! Message: {reaction.message.jump_url}")
-                    print(f"Message sent to {channel_name}!")  # Debug print
+                    print(f"Message sent to {channel.name}!")  # Debug print
                 else:
-                    print(f"Channel '{channel_name}' not found.")
+                    print(f"Channel ID '{config['channel_id']}' not found.")
             else:
                 print(f"Current count is {reaction.count}, waiting for {threshold}.")
         else:
