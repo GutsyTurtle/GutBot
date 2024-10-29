@@ -1,107 +1,75 @@
+import os
 import discord
 from discord.ext import commands
-import os
 
-intents = discord.Intents.default()
-intents.reactions = True
-intents.guilds = True
-intents.messages = True
+# Initialize the bot with command prefix
+bot = commands.Bot(command_prefix='!')
 
-bot = commands.Bot(command_prefix="!", intents=intents)
-
-# Dictionary to store per-guild starboard settings
-starboard_settings = {}
+# Store configurations for each guild
+starboard_configs = {}
 
 @bot.event
 async def on_ready():
-    print(f"Logged in as {bot.user}")
-
-async def prompt_for_input(ctx, question):
-    """ Helper function to prompt user for input and return their response """
-    await ctx.send(question)
-
-    def check(message):
-        return message.author == ctx.author and message.channel == ctx.channel
-
-    try:
-        response = await bot.wait_for("message", check=check, timeout=60)
-        return response.content
-    except asyncio.TimeoutError:
-        await ctx.send("Setup timed out. Please start again.")
-        return None
+    print(f'Logged in as {bot.user.name} - {bot.user.id}')
 
 @bot.command(name="setupstarboard")
 @commands.has_permissions(administrator=True)
 async def setup_starboard(ctx):
-    """
-    Command to guide the user through setting up the starboard channel, emoji, and threshold interactively.
-    """
-    await ctx.send("Starting starboard setup. Please answer the following questions:")
+    await ctx.send("Let's set up the starboard! Please provide the following information.")
 
-    # Prompt for channel
-    channel_name = await prompt_for_input(ctx, "Enter the name of the channel to use for the starboard:")
-    if channel_name is None:
-        return
+    # Ask for the channel name
+    await ctx.send("What is the name of the channel where the starboard should be? (e.g., #starboard)")
+    channel_message = await bot.wait_for('message', check=lambda m: m.author == ctx.author)
 
-    # Get the channel object by name
-    channel = discord.utils.get(ctx.guild.channels, name=channel_name)
-    if not channel:
-        await ctx.send(f"Channel '{channel_name}' not found. Setup canceled.")
-        return
+    # Ask for the emoji
+    await ctx.send("Which emoji should be used for the starboard? (You can use a custom emoji or a default one, e.g., ⭐ or :raywheeze:)")
+    emoji_message = await bot.wait_for('message', check=lambda m: m.author == ctx.author)
 
-    # Prompt for emoji
-    emoji = await prompt_for_input(ctx, "Enter the emoji to use for the starboard reactions (e.g., ⭐ or a custom emoji):")
-    if emoji is None:
-        return
+    # Ask for the threshold
+    await ctx.send("What should be the threshold for the starboard? (e.g., 3)")
+    threshold_message = await bot.wait_for('message', check=lambda m: m.author == ctx.author)
 
-    # Prompt for threshold
-    threshold_str = await prompt_for_input(ctx, "Enter the reaction threshold (number of reactions needed):")
-    if threshold_str is None:
-        return
+    # Store the values
+    channel_name = channel_message.content.strip()
+    emoji = emoji_message.content.strip()
+    threshold = int(threshold_message.content.strip())
 
-    try:
-        threshold = int(threshold_str)
-    except ValueError:
-        await ctx.send("Invalid number entered for threshold. Setup canceled.")
-        return
-
-    # Save settings
-    starboard_settings[ctx.guild.id] = {
-        "channel_id": channel.id,
+    # Store the configuration for the guild
+    starboard_configs[ctx.guild.id] = {
+        "channel_name": channel_name,
         "emoji": emoji,
         "threshold": threshold
     }
 
-    await ctx.send(f"Starboard set up successfully for {channel.mention} with emoji '{emoji}' and threshold {threshold}.")
+    await ctx.send(f"Starboard set up successfully! Channel: {channel_name}, Emoji: {emoji}, Threshold: {threshold}")
 
 @bot.event
 async def on_reaction_add(reaction, user):
-    """
-    Event that triggers when a reaction is added to a message.
-    Checks if the reaction matches the starboard emoji and meets the threshold.
-    """
     if user.bot:
-        return  # Ignore bot reactions
+        return
 
     guild_id = reaction.message.guild.id
-    settings = starboard_settings.get(guild_id)
+    if guild_id in starboard_configs:
+        config = starboard_configs[guild_id]
+        channel_name = config['channel_name']
+        emoji = config['emoji']
+        threshold = config['threshold']
 
-    if not settings:
-        return  # No starboard settings for this guild
+        # Check if the emoji matches
+        if str(reaction.emoji) == emoji:
+            if reaction.count == threshold:
+                channel = discord.utils.get(reaction.message.guild.text_channels, name=channel_name.strip('#'))
+                if channel:
+                    await channel.send(f"Message in #{reaction.message.channel.name} has reached {reaction.count} {emoji}! Message: {reaction.message.jump_url}")
+                else:
+                    print(f"Channel '{channel_name}' not found.")
+            else:
+                print(f"Current count is {reaction.count}, waiting for {threshold}.")
+        else:
+            print("Emoji does not match.")
 
-    # Retrieve the guild's starboard settings
-    channel_id = settings["channel_id"]
-    threshold = settings["threshold"]
-    target_emoji = settings["emoji"]
+# Run the bot with the token
+TOKEN = os.getenv('DISCORD_BOT_TOKEN')
+bot.run(TOKEN)
 
-    # Check if the reaction emoji matches and if it meets the threshold
-    if str(reaction.emoji) == target_emoji and reaction.count >= threshold:
-        starboard_channel = reaction.message.guild.get_channel(channel_id)
-        if starboard_channel:
-            await starboard_channel.send(
-                f"⭐ Message from {reaction.message.author.mention} in {reaction.message.channel.mention}:\n{reaction.message.content}"
-            )
-
-# Run the bot with your token
-bot.run(os.getenv("DISCORD_BOT_TOKEN"))
 
