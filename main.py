@@ -79,8 +79,11 @@ async def on_reaction_add(reaction, user):
         else:
             print("Emoji does not match.")
 
+@bot.event
+async def on_command_error(ctx, error):
+    print(f"An error occurred: {error}")
+    await ctx.send(f"An error occurred: {error}")
+
 # Run the bot with the token
 TOKEN = os.getenv('DISCORD_BOT_TOKEN')
 bot.run(TOKEN)
-
-
