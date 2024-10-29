@@ -22,14 +22,35 @@ async def on_ready():
 
 @bot.command(name="setstarboard")
 @commands.has_permissions(administrator=True)
-async def set_starboard(ctx, channel: discord.TextChannel, emoji: str, threshold: int):
-    guild_id = ctx.guild.id
+async def set_starboard(ctx, channel_name: str, emoji: str, threshold: int):
+    guild = ctx.guild
+
+    # Find the channel by name
+    channel = discord.utils.get(guild.text_channels, name=channel_name)
+    
+    if not channel:
+        await ctx.send(f"Channel '{channel_name}' not found.")
+        return
+    
+    guild_id = guild.id
+
+    # Check if the emoji is a custom emoji or a default one
+    if emoji.startswith("<:") and emoji.endswith(">"):  # Custom emoji format
+        custom_emoji = await commands.EmojiConverter().convert(ctx, emoji)
+        emoji_id = custom_emoji.id
+        emoji_name = str(custom_emoji)
+    else:  # Default emoji (unicode)
+        emoji_id = emoji  # Keep it as a string for default emojis
+        emoji_name = emoji
+
+    # Store configuration for the guild
     server_configs[guild_id] = {
         "starboard_channel_id": channel.id,
-        "emoji": emoji,
+        "emoji": emoji_id,
+        "emoji_name": emoji_name,
         "threshold": threshold
     }
-    await ctx.send(f"Starboard set to {channel.mention} with emoji {emoji} and threshold {threshold}.")
+    await ctx.send(f"Starboard set to {channel.mention} with emoji {emoji_name} and threshold {threshold}.")
 
 @bot.event
 async def on_reaction_add(reaction, user):
