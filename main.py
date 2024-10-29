@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+import os
 
 intents = discord.Intents.default()
 intents.reactions = True
@@ -102,5 +103,5 @@ async def on_reaction_add(reaction, user):
             )
 
 # Run the bot with your token
-bot.run("DISCORD_BOT_TOKENN")
+bot.run(os.getenv("DISCORD_BOT_TOKENN"))
 
