@@ -23,6 +23,7 @@ async def setup_starboard(ctx):
     try:
         print("setup_starboard command triggered!")  # Debug print
         await ctx.send("Let's set up the starboard! Please provide the following information.")
+        print("Prompted user for starboard channel name.")  # Debug print
 
         # Ask for the channel name
         await ctx.send("What is the name of the channel where the starboard should be? (e.g., #starboard)")
