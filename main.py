@@ -17,7 +17,7 @@ starboard_configs = {}
 async def on_ready():
     print(f'Logged in as {bot.user.name} - {bot.user.id}')
 
-@bot.command(name="setupstarboard")
+@bot.command(name="setstarboard")
 @commands.has_permissions(administrator=True)
 async def setup_starboard(ctx):
     try:
