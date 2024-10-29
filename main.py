@@ -32,7 +32,7 @@ async def setup_starboard(ctx):
         print(f"Channel name provided: {channel_message.content.strip()}")  # Debug print
 
         # Ask for the emoji
-        await ctx.send("Which emoji should be used for the starboard? (You can use a custom emoji or a default one, e.g., ⭐ or :raywheeze:)")
+        await ctx.send("Which emoji should be used for the starboard? (You can use a custom emoji or a default one, e.g., ⭐ or a custom emoji)")
         emoji_message = await bot.wait_for('message', check=lambda m: m.author == ctx.author)
 
         print(f"Emoji provided: {emoji_message.content.strip()}")  # Debug print
