@@ -29,6 +29,15 @@ async def setup_starboard(ctx):
         await ctx.send("What is the name of the channel where the starboard should be? (e.g., #starboard)")
         channel_message = await bot.wait_for('message', check=lambda m: m.author == ctx.author)
 
+        # Extract the channel ID from the mention if provided
+        channel_id = int(channel_message.content.strip('<#>'))
+        channel = ctx.guild.get_channel(channel_id)
+
+        # Check if the channel exists
+        if channel is None:
+            await ctx.send("Could not find the channel. Please ensure it exists and try again.")
+            return
+
         print(f"Channel name provided: {channel_message.content.strip()}")  # Debug print
 
         # Ask for the emoji
