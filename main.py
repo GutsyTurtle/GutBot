@@ -36,9 +36,7 @@ async def set_starboard(ctx, channel_name: str, emoji: str, threshold: int):
         return
 
     # Rest of your code for setting emoji and threshold
-
-    
-    guild_id = guild.id
+    guild_id = ctx.guild.id
 
     # Check if the emoji is a custom emoji or a default one
     if emoji.startswith("<:") and emoji.endswith(">"):  # Custom emoji format
