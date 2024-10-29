@@ -1,6 +1,7 @@
 import os
 import discord
 from discord.ext import commands
+import re
 
 # Set up intents
 intents = discord.Intents.default()
@@ -30,28 +31,35 @@ async def setup_starboard(ctx):
         channel_message = await bot.wait_for('message', check=lambda m: m.author == ctx.author)
 
         # Ask for the emoji
-        await ctx.send("Which emoji should be used for the starboard? (You can use a custom emoji or a default one, e.g., ⭐ or custom emoji)")
+        await ctx.send("Which emoji should be used for the starboard? (You can use a custom emoji or a default one, e.g., ⭐ or a custom emoji)")
         emoji_message = await bot.wait_for('message', check=lambda m: m.author == ctx.author)
 
         # Ask for the threshold
         await ctx.send("What should be the threshold for the starboard? (e.g., 3)")
         threshold_message = await bot.wait_for('message', check=lambda m: m.author == ctx.author)
 
-        # Get values from user responses
+        # Extract the channel ID if a mention is provided, otherwise use the name
         channel_name = channel_message.content.strip()
-        emoji = emoji_message.content.strip()
-        threshold = int(threshold_message.content.strip())
+        channel_id = None
+        mention_match = re.match(r'<#(\d+)>', channel_name)
+        if mention_match:
+            channel_id = int(mention_match.group(1))
+        else:
+            # Retrieve channel by name if it was not a mention
+            channel = discord.utils.get(ctx.guild.text_channels, name=channel_name.strip('#'))
+            if channel:
+                channel_id = channel.id
 
-        # Retrieve channel object and its ID
-        channel = discord.utils.get(ctx.guild.text_channels, name=channel_name.strip('#'))
-        if not channel:
+        if not channel_id:
             await ctx.send(f"Channel '{channel_name}' not found.")
             print(f"Channel '{channel_name}' not found.")
             return
 
         # Store the configuration with the actual channel ID
+        emoji = emoji_message.content.strip()
+        threshold = int(threshold_message.content.strip())
         starboard_configs[ctx.guild.id] = {
-            "channel_id": channel.id,  # Store channel ID directly
+            "channel_id": channel_id,
             "emoji": emoji,
             "threshold": threshold
         }
@@ -59,7 +67,9 @@ async def setup_starboard(ctx):
         # Confirm the config is stored with correct ID
         print(f"Configuration saved for guild {ctx.guild.id}: {starboard_configs[ctx.guild.id]}")
 
-        await ctx.send(f"Starboard set up successfully! Channel: {channel.mention}, Emoji: {emoji}, Threshold: {threshold}")
+        # Send confirmation to user
+        channel = ctx.guild.get_channel(channel_id)
+        await ctx.send(f"Starboard set up successfully! Channel: {channel.mention if channel else '#'+channel_name}, Emoji: {emoji}, Threshold: {threshold}")
 
     except Exception as e:
         print(f"Error occurred: {e}")
