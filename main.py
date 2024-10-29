@@ -23,14 +23,20 @@ async def on_ready():
 @bot.command(name="setstarboard")
 @commands.has_permissions(administrator=True)
 async def set_starboard(ctx, channel_name: str, emoji: str, threshold: int):
-    guild = ctx.guild
-
-    # Find the channel by name
-    channel = discord.utils.get(guild.text_channels, name=channel_name)
+    # Check if channel_name is a mention and extract ID
+    if channel_name.startswith("<#") and channel_name.endswith(">"):
+        channel_id = int(channel_name[2:-1])
+        channel = ctx.guild.get_channel(channel_id)
+    else:
+        # Otherwise, try finding by name
+        channel = discord.utils.get(ctx.guild.channels, name=channel_name)
     
-    if not channel:
+    if channel is None:
         await ctx.send(f"Channel '{channel_name}' not found.")
         return
+
+    # Rest of your code for setting emoji and threshold
+
     
     guild_id = guild.id
 
