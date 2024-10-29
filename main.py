@@ -102,5 +102,5 @@ async def on_reaction_add(reaction, user):
             )
 
 # Run the bot with your token
-bot.run("YOUR_BOT_TOKEN")
+bot.run("DISCORD_BOT_TOKENN")
 
