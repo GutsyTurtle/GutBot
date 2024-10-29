@@ -80,25 +80,38 @@ async def on_reaction_add(reaction, user):
     guild_id = reaction.message.guild.id
     if guild_id in starboard_configs:
         config = starboard_configs[guild_id]
-        channel_name = config['channel_name']
-        emoji = config['emoji']
-        threshold = config['threshold']
+        
+        # Debugging print to check the config for the guild
+        print(f"Config for guild {guild_id}: {config}")
+
+        # Check if channel_id is present in config
+        if "channel_id" not in config:
+            print(f"No channel_id found in config for guild {guild_id}.")
+            return
+
+        channel_id = config["channel_id"]
+        emoji = config["emoji"]
+        threshold = config["threshold"]
 
         # Check if the emoji matches
-        print(f"Reaction received: {reaction.emoji} by {user.name} on message {reaction.message.id}")  # Debug print
         if str(reaction.emoji) == emoji:
-            print(f"Emoji matches. Current count: {reaction.count}, Threshold: {threshold}")  # Debug print
-            if reaction.count == threshold:
-                channel = reaction.message.guild.get_channel(config["channel_id"])
+            print(f"Emoji matches. Current count: {reaction.count}, Threshold: {threshold}")
+            if reaction.count >= threshold:
+                channel = reaction.message.guild.get_channel(channel_id)
                 if channel:
-                    await channel.send(f"Message in #{reaction.message.channel.name} has reached {reaction.count} {emoji}! Message: {reaction.message.jump_url}")
+                    await channel.send(
+                        f"Message in #{reaction.message.channel.name} has reached {reaction.count} {emoji}! "
+                        f"Message: {reaction.message.jump_url}"
+                    )
                     print(f"Message sent to {channel.name}!")  # Debug print
                 else:
-                    print(f"Channel ID '{config['channel_id']}' not found.")
+                    print(f"Channel ID '{channel_id}' not found.")
             else:
                 print(f"Current count is {reaction.count}, waiting for {threshold}.")
         else:
             print("Emoji does not match.")
+    else:
+        print(f"No configuration found for guild {guild_id}.")
 
 # Run the bot with the token
 TOKEN = os.getenv('DISCORD_BOT_TOKEN')
