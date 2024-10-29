@@ -2,8 +2,13 @@ import os
 import discord
 from discord.ext import commands
 
-# Initialize the bot with command prefix
-bot = commands.Bot(command_prefix='!')
+# Set up intents
+intents = discord.Intents.default()
+intents.messages = True  # Enable message intents
+intents.reactions = True  # Enable reaction intents
+
+# Initialize the bot with command prefix and intents
+bot = commands.Bot(command_prefix='!', intents=intents)
 
 # Store configurations for each guild
 starboard_configs = {}
