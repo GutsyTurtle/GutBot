@@ -20,22 +20,24 @@ async def on_ready():
 @bot.command(name="setstarboard")
 @commands.has_permissions(administrator=True)
 async def setup_starboard(ctx):
+    print("setup_starboard command triggered!")  # Debug print
+    await ctx.send("Let's set up the starboard! Please provide the following information.")
+    
     try:
-        print("setup_starboard command triggered!")  # Debug print
-        await ctx.send("Let's set up the starboard! Please provide the following information.")
-        print("Prompted user for starboard channel name.")  # Debug print
-
         # Ask for the channel name
         await ctx.send("What is the name of the channel where the starboard should be? (e.g., #starboard)")
         channel_message = await bot.wait_for('message', check=lambda m: m.author == ctx.author)
+        print(f"Channel name received: {channel_message.content}")  # Debug print
 
         # Ask for the emoji
         await ctx.send("Which emoji should be used for the starboard? (You can use a custom emoji or a default one, e.g., ⭐ or :raywheeze:)")
         emoji_message = await bot.wait_for('message', check=lambda m: m.author == ctx.author)
+        print(f"Emoji received: {emoji_message.content}")  # Debug print
 
         # Ask for the threshold
         await ctx.send("What should be the threshold for the starboard? (e.g., 3)")
         threshold_message = await bot.wait_for('message', check=lambda m: m.author == ctx.author)
+        print(f"Threshold received: {threshold_message.content}")  # Debug print
 
         # Store the values
         channel_name = channel_message.content.strip()
@@ -50,10 +52,10 @@ async def setup_starboard(ctx):
         }
 
         await ctx.send(f"Starboard set up successfully! Channel: {channel_name}, Emoji: {emoji}, Threshold: {threshold}")
-
     except Exception as e:
         print(f"Error occurred: {e}")  # Log the error
         await ctx.send("An error occurred while setting up the starboard. Please check the console for details.")
+
 
 @bot.event
 async def on_reaction_add(reaction, user):
