@@ -17,36 +17,42 @@ starboard_configs = {}
 async def on_ready():
     print(f'Logged in as {bot.user.name} - {bot.user.id}')
 
-@bot.command(name="setstarboard")
+@bot.command(name="setupstarboard")
 @commands.has_permissions(administrator=True)
 async def setup_starboard(ctx):
-    await ctx.send("Let's set up the starboard! Please provide the following information.")
+    try:
+        print("setup_starboard command triggered!")  # Debug print
+        await ctx.send("Let's set up the starboard! Please provide the following information.")
 
-    # Ask for the channel name
-    await ctx.send("What is the name of the channel where the starboard should be? (e.g., #starboard)")
-    channel_message = await bot.wait_for('message', check=lambda m: m.author == ctx.author)
+        # Ask for the channel name
+        await ctx.send("What is the name of the channel where the starboard should be? (e.g., #starboard)")
+        channel_message = await bot.wait_for('message', check=lambda m: m.author == ctx.author)
 
-    # Ask for the emoji
-    await ctx.send("Which emoji should be used for the starboard? (You can use a custom emoji or a default one, e.g., ⭐ or :raywheeze:)")
-    emoji_message = await bot.wait_for('message', check=lambda m: m.author == ctx.author)
+        # Ask for the emoji
+        await ctx.send("Which emoji should be used for the starboard? (You can use a custom emoji or a default one, e.g., ⭐ or :raywheeze:)")
+        emoji_message = await bot.wait_for('message', check=lambda m: m.author == ctx.author)
 
-    # Ask for the threshold
-    await ctx.send("What should be the threshold for the starboard? (e.g., 3)")
-    threshold_message = await bot.wait_for('message', check=lambda m: m.author == ctx.author)
+        # Ask for the threshold
+        await ctx.send("What should be the threshold for the starboard? (e.g., 3)")
+        threshold_message = await bot.wait_for('message', check=lambda m: m.author == ctx.author)
 
-    # Store the values
-    channel_name = channel_message.content.strip()
-    emoji = emoji_message.content.strip()
-    threshold = int(threshold_message.content.strip())
+        # Store the values
+        channel_name = channel_message.content.strip()
+        emoji = emoji_message.content.strip()
+        threshold = int(threshold_message.content.strip())
 
-    # Store the configuration for the guild
-    starboard_configs[ctx.guild.id] = {
-        "channel_name": channel_name,
-        "emoji": emoji,
-        "threshold": threshold
-    }
+        # Store the configuration for the guild
+        starboard_configs[ctx.guild.id] = {
+            "channel_name": channel_name,
+            "emoji": emoji,
+            "threshold": threshold
+        }
 
-    await ctx.send(f"Starboard set up successfully! Channel: {channel_name}, Emoji: {emoji}, Threshold: {threshold}")
+        await ctx.send(f"Starboard set up successfully! Channel: {channel_name}, Emoji: {emoji}, Threshold: {threshold}")
+
+    except Exception as e:
+        print(f"Error occurred: {e}")  # Log the error
+        await ctx.send("An error occurred while setting up the starboard. Please check the console for details.")
 
 @bot.event
 async def on_reaction_add(reaction, user):
