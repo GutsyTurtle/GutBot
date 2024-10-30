@@ -83,25 +83,21 @@ async def on_reaction_add(reaction, user):
     guild_id = reaction.message.guild.id
     if guild_id in starboard_configs:
         config = starboard_configs[guild_id]
-        
-        # Debugging print to check the config for the guild
+        channel_id = config.get('channel_id')
+        emoji = config['emoji']
+        threshold = config['threshold']
+
+        print(f"Reaction received: {reaction} from user {user}.")
         print(f"Config for guild {guild_id}: {config}")
-
-        # Check if channel_id is present in config
-        if "channel_id" not in config:
-            print(f"No channel_id found in config for guild {guild_id}.")
-            return
-
-        channel_id = config["channel_id"]
-        emoji = config["emoji"]
-        threshold = config["threshold"]
+        print(f"Reaction count: {reaction.count}, Threshold: {threshold}")
 
         # Check if the emoji matches
         if str(reaction.emoji) == emoji:
-            print(f"Emoji matches. Current count: {reaction.count}, Threshold: {threshold}")
             if reaction.count >= threshold:
+                # Fetch the starboard channel by ID
                 channel = reaction.message.guild.get_channel(channel_id)
                 if channel:
+                    print(f"Channel found: {channel.name}. Preparing to send embed.")
                     embed = discord.Embed(
                         title="🌟 Starred Message",
                         description=reaction.message.content or "[Message has no text]",
@@ -112,28 +108,36 @@ async def on_reaction_add(reaction, user):
                     embed.add_field(name="Stars", value=str(reaction.count), inline=True)
                     embed.add_field(name="Link to Message", value=f"[Jump to Message]({reaction.message.jump_url})", inline=False)
 
-                    # Check for images and videos
-                    if reaction.message.attachments:
-                        for attachment in reaction.message.attachments:
-                            if attachment.url.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
-                                embed.set_image(url=attachment.url)  # Embed first image
-                                break
-                        # Add a note if there are more attachments or videos
-                        extra_attachments = [att.url for att in reaction.message.attachments if not att.url.endswith(('png', 'jpg', 'jpeg', 'gif', 'webp'))]
-                        if extra_attachments:
-                            embed.add_field(name="Additional Media", value="\n".join(extra_attachments), inline=False)
+                    # Display the first image, GIF, or sticker in the embed
+                    image_found = False
+                    for attachment in reaction.message.attachments:
+                        print(f"Checking attachment: {attachment.url}")
+                        if any(attachment.url.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp']):
+                            embed.set_image(url=attachment.url)  # Set first image or GIF
+                            print(f"Image or GIF set in embed: {attachment.url}")
+                            image_found = True
+                            break
+                    
+                    # Check for stickers (Discord stickers may need explicit handling)
+                    if reaction.message.stickers:
+                        embed.set_image(url=reaction.message.stickers[0].url)
+                        print(f"Sticker set in embed: {reaction.message.stickers[0].url}")
+                        image_found = True
+
+                    # If no image was directly embedded, add a link to attachments as fallback
+                    if not image_found and reaction.message.attachments:
+                        embed.add_field(name="Attachment", value=reaction.message.attachments[0].url, inline=False)
+                        print(f"Attachment link added to embed: {reaction.message.attachments[0].url}")
 
                     embed.set_footer(text="Starboard Bot")
                     await channel.send(embed=embed)
                     print("Embed with media sent to starboard channel.")
                 else:
-                    print(f"Channel ID '{channel_id}' not found.")
+                    print(f"Channel with ID '{channel_id}' not found.")
             else:
                 print(f"Current count is {reaction.count}, waiting for {threshold}.")
         else:
             print("Emoji does not match.")
-    else:
-        print(f"No configuration found for guild {guild_id}.")
 
 # Run the bot with the token
 TOKEN = os.getenv('DISCORD_BOT_TOKEN')
