@@ -1,122 +1,94 @@
-import os
 import discord
-import json
 from discord.ext import commands
+import json
+import os
 
-# Set up intents
+# Set up intents and bot instance
 intents = discord.Intents.default()
-intents.messages = True
+intents.message_content = True
 intents.reactions = True
+bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Initialize the bot with command prefix and intents
-bot = commands.Bot(command_prefix='!', intents=intents)
+# Load configurations on startup
+starboard_configs = {}
 
-# File path for storing configuration
-CONFIG_FILE_PATH = "starboard_config.json"
-
-# Load existing configurations from file if it exists
 def load_configurations():
+    global starboard_configs
     try:
-        with open(CONFIG_FILE_PATH, 'r') as file:
-            return json.load(file)
-    except FileNotFoundError:
-        print("Configuration file not found. Starting with empty configurations.")
-        return {}
-    except json.JSONDecodeError:
-        print("Error decoding the configuration file. Starting with empty configurations.")
-        return {}
+        if os.path.exists("starboard_config.json"):
+            with open("starboard_config.json", "r") as f:
+                starboard_configs = json.load(f)
+                print("Configurations loaded on startup:", starboard_configs)
+        else:
+            print("Configuration file not found. Starting with empty configurations.")
+    except Exception as e:
+        print("Error loading configurations:", e)
+        starboard_configs = {}
 
 # Save configurations to file
 def save_configurations():
-    with open(CONFIG_FILE_PATH, 'w') as file:
-        json.dump(starboard_configs, file)
-        print("Configurations saved.")
+    try:
+        with open("starboard_config.json", "w") as f:
+            json.dump(starboard_configs, f, indent=4)
+            print("Configurations saved:", starboard_configs)
+    except Exception as e:
+        print("Error saving configurations:", e)
 
-# Store configurations for each guild
-starboard_configs = load_configurations()
+# Load configurations on bot startup
+load_configurations()
 
 @bot.event
 async def on_ready():
-    print(f'Logged in as {bot.user.name} - {bot.user.id}')
+    print(f"Logged in as {bot.user} ({bot.user.id})")
 
 @bot.command(name="setstarboard")
-@commands.has_permissions(administrator=True)
-async def setup_starboard(ctx):
-    try:
-        print("setup_starboard command triggered!")
-        await ctx.send("Let's set up the starboard! Please provide the following information.")
-
-        # Ask for the channel name
-        await ctx.send("What is the name of the channel where the starboard should be? (e.g., #starboard)")
-        channel_message = await bot.wait_for('message', check=lambda m: m.author == ctx.author)
-
-        # Ask for the emoji
-        await ctx.send("Which emoji should be used for the starboard? (You can use a custom emoji or a default one, e.g., ⭐ or a custom emoji)") 
-        emoji_message = await bot.wait_for('message', check=lambda m: m.author == ctx.author)
-
-        # Ask for the threshold
-        await ctx.send("What should be the threshold for the starboard? (e.g., 3)")
-        threshold_message = await bot.wait_for('message', check=lambda m: m.author == ctx.author)
-
-        # Store the values
-        channel_name = channel_message.content.strip()
-        emoji = emoji_message.content.strip()
-        threshold = int(threshold_message.content.strip())
-
-        # Store the configuration for the guild
-        starboard_configs[ctx.guild.id] = {
-            "channel_name": channel_name,
-            "emoji": emoji,
-            "threshold": threshold
-        }
-
-        # Save the updated configurations
-        save_configurations()
-
-        await ctx.send(f"Starboard set up successfully! Channel: {channel_name}, Emoji: {emoji}, Threshold: {threshold}")
-
-    except Exception as e:
-        print(f"Error occurred: {e}")
-        await ctx.send("An error occurred while setting up the starboard. Please check the console for details.")
+async def set_starboard(ctx, channel: discord.TextChannel, emoji: str, threshold: int):
+    guild_id = str(ctx.guild.id)
+    starboard_configs[guild_id] = {
+        "channel_id": channel.id,
+        "emoji": emoji,
+        "threshold": threshold
+    }
+    save_configurations()  # Save changes after setting configuration
+    await ctx.send(f"Starboard set to {channel.mention} with emoji {emoji} and threshold {threshold}")
+    print(f"Starboard set for guild {guild_id}: {starboard_configs[guild_id]}")
 
 @bot.event
 async def on_reaction_add(reaction, user):
     if user.bot:
         return
+    
+    guild_id = str(reaction.message.guild.id)
+    config = starboard_configs.get(guild_id)
+    
+    if not config:
+        print(f"No configuration found for guild {guild_id}")
+        return
+    
+    # Check if the emoji matches and count exceeds threshold
+    if str(reaction.emoji) == config["emoji"] and reaction.count >= config["threshold"]:
+        print("Emoji matches and threshold reached.")
+        
+        # Retrieve starboard channel
+        channel = bot.get_channel(config["channel_id"])
+        if channel is None:
+            print(f"Starboard channel with ID {config['channel_id']} not found.")
+            return
+        
+        # Embed the message with images/videos
+        embed = discord.Embed(description=reaction.message.content, color=discord.Color.gold())
+        if reaction.message.attachments:
+            for attachment in reaction.message.attachments:
+                if any(attachment.url.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp']):
+                    embed.set_image(url=attachment.url)
+                elif any(attachment.url.lower().endswith(ext) for ext in ['.mp4', '.webm']):
+                    embed.add_field(name="Video", value=attachment.url, inline=False)
+        
+        embed.set_author(name=reaction.message.author.display_name, icon_url=reaction.message.author.avatar.url)
+        embed.add_field(name="Jump to message", value=f"[Click here]({reaction.message.jump_url})")
+        
+        await channel.send(embed=embed)
+        print("Message sent to starboard.")
 
-    guild_id = reaction.message.guild.id
-    if guild_id in starboard_configs:
-        config = starboard_configs[guild_id]
-        channel_name = config.get("channel_name")
-        emoji = config.get("emoji")
-        threshold = config.get("threshold")
-
-        # Check if the emoji matches
-        if str(reaction.emoji) == emoji:
-            print(f"Emoji matches. Current count: {reaction.count}, Threshold: {threshold}")
-            if reaction.count >= threshold:
-                # Get the channel by name
-                channel = discord.utils.get(reaction.message.guild.text_channels, name=channel_name.strip('#'))
-                if channel:
-                    # Create and send an embed with image or video if present
-                    embed = discord.Embed(description=f"[Jump to Message]({reaction.message.jump_url})")
-                    embed.set_author(name=reaction.message.author.display_name, icon_url=reaction.message.author.avatar.url)
-
-                    # Add image, gif, or video if exists
-                    if reaction.message.attachments:
-                        for attachment in reaction.message.attachments:
-                            if attachment.url.endswith(('.png', '.jpg', '.jpeg', '.gif', '.mp4', '.webm')):
-                                embed.set_image(url=attachment.url)
-                                break  # Only display the first attachment
-
-                    await channel.send(f"{emoji} **Message by {reaction.message.author.mention} has reached {reaction.count} reactions!**", embed=embed)
-                else:
-                    print(f"Channel '{channel_name}' not found.")
-            else:
-                print(f"Current count is {reaction.count}, waiting for {threshold}.")
-        else:
-            print("Emoji does not match.")
-
-# Run the bot with the token
-TOKEN = os.getenv('DISCORD_BOT_TOKEN')
-bot.run(TOKEN)
+# Run the bot with your token
+bot.run(os.getenv("DISCORD_BOT_TOKEN"))
