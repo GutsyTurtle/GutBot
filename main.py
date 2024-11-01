@@ -48,6 +48,17 @@ async def setup_starboard(ctx, channel_name: str, emoji: str, threshold: int):
         await ctx.send(f"Channel '{channel_name}' not found.")
         print(f"Channel '{channel_name}' not found in guild {guild_id}.")
 
+    # Debugging to check saved channel ID and permissions
+    print(f"Attempting to access channel ID {starboard_configs[guild_id]['channel_id']} in guild {guild_id}")
+    try:
+        test_channel = ctx.guild.get_channel(starboard_configs[guild_id]['channel_id'])
+        if test_channel:
+            print(f"Channel found: {test_channel.name}")
+        else:
+            print("Channel not found!")
+    except Exception as e:
+        print(f"Error accessing channel: {str(e)}")
+        
 @bot.event
 async def on_reaction_add(reaction, user):
     print(f"Reaction added by {user} on message ID {reaction.message.id} in channel {reaction.message.channel.name}")
