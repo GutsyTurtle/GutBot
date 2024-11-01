@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import json
 import os
+import threading
 
 # Set up intents and bot instance
 intents = discord.Intents.default()
@@ -9,30 +10,32 @@ intents.message_content = True
 intents.reactions = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Load configurations on startup
+# Lock for file I/O operations
+file_lock = threading.Lock()
 starboard_configs = {}
 
 def load_configurations():
     global starboard_configs
-    try:
-        if os.path.exists("starboard_config.json"):
-            with open("starboard_config.json", "r") as f:
-                starboard_configs = json.load(f)
-                print("Configurations loaded on startup:", starboard_configs)
-        else:
-            print("Configuration file not found. Starting with empty configurations.")
-    except Exception as e:
-        print("Error loading configurations:", e)
-        starboard_configs = {}
+    with file_lock:
+        try:
+            if os.path.exists("starboard_config.json"):
+                with open("starboard_config.json", "r") as f:
+                    starboard_configs = json.load(f)
+                    print("Configurations loaded on startup:", starboard_configs)
+            else:
+                print("Configuration file not found. Starting with empty configurations.")
+        except Exception as e:
+            print("Error loading configurations:", e)
+            starboard_configs = {}
 
-# Save configurations to file
 def save_configurations():
-    try:
-        with open("starboard_config.json", "w") as f:
-            json.dump(starboard_configs, f, indent=4)
-            print("Configurations saved:", starboard_configs)
-    except Exception as e:
-        print("Error saving configurations:", e)
+    with file_lock:
+        try:
+            with open("starboard_config.json", "w") as f:
+                json.dump(starboard_configs, f, indent=4)
+                print("Configurations saved:", starboard_configs)
+        except Exception as e:
+            print("Error saving configurations:", e)
 
 # Load configurations on bot startup
 load_configurations()
