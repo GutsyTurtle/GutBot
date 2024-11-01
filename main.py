@@ -36,6 +36,7 @@ async def setup_starboard(ctx, channel_name: str, emoji: str, threshold: int):
     channel = discord.utils.get(ctx.guild.text_channels, name=channel_name)
 
     if channel:
+        # Update the starboard configurations
         starboard_configs[guild_id] = {
             "channel_id": channel.id,
             "emoji": emoji,
@@ -48,16 +49,23 @@ async def setup_starboard(ctx, channel_name: str, emoji: str, threshold: int):
         await ctx.send(f"Channel '{channel_name}' not found.")
         print(f"Channel '{channel_name}' not found in guild {guild_id}.")
 
-    # Debugging to check saved channel ID and permissions
-    print(f"Attempting to access channel ID {starboard_configs[guild_id]['channel_id']} in guild {guild_id}")
-    try:
-        test_channel = ctx.guild.get_channel(starboard_configs[guild_id]['channel_id'])
-        if test_channel:
-            print(f"Channel found: {test_channel.name}")
-        else:
-            print("Channel not found!")
-    except Exception as e:
-        print(f"Error accessing channel: {str(e)}")
+    # Debugging to check saved configurations
+    if guild_id in starboard_configs:
+        print(f"Configurations for guild {guild_id}: {starboard_configs[guild_id]}")
+        try:
+            # Attempt to access the channel ID
+            test_channel = ctx.guild.get_channel(starboard_configs[guild_id]['channel_id'])
+            if test_channel:
+                print(f"Channel found: {test_channel.name}")
+            else:
+                print("Channel not found in guild context!")
+        except KeyError as e:
+            print(f"KeyError accessing channel ID: {e}")
+        except Exception as e:
+            print(f"Error accessing channel: {str(e)}")
+    else:
+        print(f"No configuration found for guild {guild_id}. Please set the starboard again.")
+
         
 @bot.event
 async def on_reaction_add(reaction, user):
