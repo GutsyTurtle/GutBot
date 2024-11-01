@@ -94,5 +94,5 @@ async def setup_starboard(ctx, channel_name: str, emoji: str, threshold: int):
         print(f"No configuration found for guild {guild_id}. Please set the starboard again.")
 
 # Start the bot with your token
-bot.run("YOUR_BOT_TOKEN")
+bot.run("DISCORD_BOT_TOKEN")
 
