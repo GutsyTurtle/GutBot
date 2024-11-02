@@ -24,6 +24,9 @@ def save_starboard_configs(configs):
 
 starboard_configs = load_starboard_configs()
 
+# Track messages already posted to the starboard
+starboard_messages = {}
+
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user.name} and {bot.user.id}')
@@ -52,6 +55,7 @@ async def on_reaction_add(reaction, user):
         emoji = config['emoji']
         threshold = config['threshold']
         channel_id = config['channel_id']
+        
         print(f"Reaction received: {reaction.emoji}, Expected emoji: {emoji}, Threshold: {threshold}")
 
         if str(reaction.emoji) == emoji:
@@ -61,15 +65,32 @@ async def on_reaction_add(reaction, user):
             if current_count >= threshold:
                 channel = bot.get_channel(channel_id)
                 if channel:
-                    embed = discord.Embed(description=reaction.message.content)
-                    embed.set_author(name=reaction.message.author.display_name, icon_url=reaction.message.author.avatar.url)
-                    embed.set_footer(text=f"Reaction Count: {current_count}")
-                    if reaction.message.attachments:
-                        attachment = reaction.message.attachments[0]
-                        embed.set_image(url=attachment.url)
+                    # Construct a link to the original message
+                    message_url = f"https://discord.com/channels/{reaction.message.guild.id}/{reaction.message.channel.id}/{reaction.message.id}"
+                    
+                    # Check if the message is already in starboard
+                    if reaction.message.id in starboard_messages:
+                        starboard_msg = starboard_messages[reaction.message.id]
+                        # Update the embed with the new reaction count
+                        embed = starboard_msg.embeds[0]
+                        embed.set_footer(text=f"⭐ {current_count} | Sent in #{reaction.message.channel.name}")
+                        await starboard_msg.edit(embed=embed)
+                        print(f"Updated starboard message for original message ID {reaction.message.id}")
+                    else:
+                        # Create a new embed and send to starboard
+                        embed = discord.Embed(
+                            description=f"[Jump to message]({message_url})\n\n{reaction.message.content}"
+                        )
+                        embed.set_author(name=reaction.message.author.display_name, icon_url=reaction.message.author.avatar.url)
+                        embed.set_footer(text=f"⭐ {current_count} | Sent in #{reaction.message.channel.name}")
+                        if reaction.message.attachments:
+                            attachment = reaction.message.attachments[0]
+                            embed.set_image(url=attachment.url)
 
-                    await channel.send(embed=embed)
-                    print(f"Message sent to starboard: {embed.to_dict()}")
+                        starboard_msg = await channel.send(embed=embed)
+                        # Track the starboard message to update later
+                        starboard_messages[reaction.message.id] = starboard_msg
+                        print(f"Message sent to starboard: {embed.to_dict()}")
                 else:
                     print(f"Channel '{channel_id}' not found in guild {guild_id}.")
         else:
