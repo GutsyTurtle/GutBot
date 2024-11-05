@@ -12,15 +12,21 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 # Load starboard configurations
 def load_starboard_configs():
-    if os.path.exists("starboard_configs.json"):
-        with open("starboard_configs.json", "r") as f:
+    file_path = "starboard_configs.json"
+    if os.path.exists(file_path):
+        print(f"File '{file_path}' found, attempting to load configurations.")
+        with open(file_path, "r") as f:
             return json.load(f)
+    else:
+        print(f"File '{file_path}' not found, loading default empty configuration.")
     return {}
 
 # Save starboard configurations
 def save_starboard_configs(configs):
     with open("starboard_configs.json", "w") as f:
         json.dump(configs, f)
+    print(f"Configurations saved: {configs}")
+
 
 starboard_configs = load_starboard_configs()
 
@@ -46,9 +52,10 @@ async def setstarboard(ctx, channel: discord.TextChannel, emoji: str, threshold:
 
 @bot.event
 async def on_reaction_add(reaction, user):
+    print(f"Reaction detected: {reaction.emoji} from user {user}")
     if user == bot.user:
         return
-
+        
     guild_id = str(reaction.message.guild.id)
     if guild_id in starboard_configs:
         config = starboard_configs[guild_id]
