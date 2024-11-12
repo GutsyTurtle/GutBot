@@ -14,11 +14,15 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 def load_starboard_configs():
     file_path = "starboard_configs.json"
     if os.path.exists(file_path):
-        print(f"File '{file_path}' found, attempting to load configurations.")
-        with open(file_path, "r") as f:
-            return json.load(f)
+        try:
+            with open(file_path, "r") as f:
+                configs = json.load(f)
+                print(f"Configurations loaded: {configs}")
+                return configs
+        except json.JSONDecodeError:
+            print("Error decoding JSON. Resetting to empty configurations.")
     else:
-        print(f"File '{file_path}' not found, loading default empty configuration.")
+        print(f"File '{file_path}' not found. Using empty configurations.")
     return {}
 
 # Save starboard configurations
