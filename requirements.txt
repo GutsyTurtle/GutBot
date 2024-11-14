@@ -2,6 +2,7 @@
 discord.py==2.4.0
 aiohttp==3.10.9
 requests==2.32.3
+psycopg2-binary==2.9.9
 
 # Remove these if you're not using TensorFlow or ML
 # tensorboard==2.12.2
