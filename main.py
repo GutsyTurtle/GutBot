@@ -1,19 +1,8 @@
 import os
+import json
 import discord
-import psycopg2
 from discord.ext import commands
-from dotenv import load_dotenv
 
-# Load environment variables from .env
-load_dotenv()
-
-# Database connection setup
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-def get_db_connection():
-    return psycopg2.connect(DATABASE_URL)
-
-# Initialize the bot with intents
 intents = discord.Intents.default()
 intents.message_content = True
 intents.reactions = True
@@ -21,69 +10,69 @@ intents.guilds = True
 
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-# Load starboard configuration from the database
-def load_starboard_config(guild_id):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT channel_id, emoji, threshold FROM starboard_configs WHERE guild_id = %s", (guild_id,))
-    result = cur.fetchone()
-    cur.close()
-    conn.close()
-    if result:
-        return {'channel_id': result[0], 'emoji': result[1], 'threshold': result[2]}
-    return None
+# Load starboard configurations
+def load_starboard_configs():
+    file_path = "starboard_configs.json"
+    if os.path.exists(file_path):
+        print(f"File '{file_path}' found, attempting to load configurations.")
+        with open(file_path, "r") as f:
+            return json.load(f)
+    else:
+        print(f"File '{file_path}' not found, loading default empty configuration.")
+    return {}
 
-# Save starboard configuration to the database
-def save_starboard_config(guild_id, channel_id, emoji, threshold):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO starboard_configs (guild_id, channel_id, emoji, threshold)
-        VALUES (%s, %s, %s, %s)
-        ON CONFLICT (guild_id) DO UPDATE SET channel_id = %s, emoji = %s, threshold = %s;
-    """, (guild_id, channel_id, emoji, threshold, channel_id, emoji, threshold))
-    conn.commit()
-    cur.close()
-    conn.close()
-    print(f"Configuration saved for guild {guild_id}: channel={channel_id}, emoji={emoji}, threshold={threshold}")
+# Save starboard configurations
+def save_starboard_configs(configs):
+    with open("starboard_configs.json", "w") as f:
+        json.dump(configs, f)
+    print(f"Configurations saved: {configs}")
 
-# Track messages already posted to the starboard
+# Initialize configurations and starboard messages
+starboard_configs = load_starboard_configs()
 starboard_messages = {}
 
 @bot.event
 async def on_ready():
-    print(f'Logged in as {bot.user.name} (ID: {bot.user.id})')
+    print(f'Logged in as {bot.user.name} ({bot.user.id})')
+    print(f'Configurations loaded: {starboard_configs}')
 
 @bot.command()
 async def setstarboard(ctx, channel: discord.TextChannel, emoji: str, threshold: int):
-    guild_id = ctx.guild.id
-    save_starboard_config(guild_id, channel.id, emoji, threshold)
+    guild_id = str(ctx.guild.id)
+    starboard_configs[guild_id] = {
+        'channel_id': channel.id,
+        'emoji': emoji,
+        'threshold': threshold
+    }
+    save_starboard_configs(starboard_configs)
     await ctx.send(f'Starboard set in {channel.mention} with emoji {emoji} and threshold {threshold}')
-    print(f"Starboard set for guild {guild_id}: channel={channel.id}, emoji={emoji}, threshold={threshold}")
+    print(f"Starboard set for guild {guild_id}: {starboard_configs[guild_id]}")
 
 @bot.event
 async def on_reaction_add(reaction, user):
+    print(f"Reaction detected: {reaction.emoji} from user {user}")
     if user == bot.user:
         return
 
-    guild_id = reaction.message.guild.id
-    config = load_starboard_config(guild_id)
-
-    if config:
+    guild_id = str(reaction.message.guild.id)
+    if guild_id in starboard_configs:
+        config = starboard_configs[guild_id]
         emoji = config['emoji']
         threshold = config['threshold']
         channel_id = config['channel_id']
+        
+        print(f"Reaction received: {reaction.emoji}, Expected emoji: {emoji}, Threshold: {threshold}")
 
         if str(reaction.emoji) == emoji:
             current_count = reaction.count
+            print(f"Emoji matches. Current count: {current_count}, Threshold: {threshold}")
 
             if current_count >= threshold:
                 channel = bot.get_channel(channel_id)
                 if channel:
-                    # Construct a link to the original message
                     message_url = f"https://discord.com/channels/{reaction.message.guild.id}/{reaction.message.channel.id}/{reaction.message.id}"
-
-                    # Check if the message is already in starboard
+                    
+                    # Check if the message is already in the starboard
                     if reaction.message.id in starboard_messages:
                         starboard_msg = starboard_messages[reaction.message.id]
                         embed = starboard_msg.embeds[0]
@@ -91,27 +80,26 @@ async def on_reaction_add(reaction, user):
                         await starboard_msg.edit(embed=embed)
                         print(f"Updated starboard message for original message ID {reaction.message.id}")
                     else:
+                        # Create a new embed and send to starboard
                         embed = discord.Embed(
                             description=f"[Jump to message]({message_url})\n\n{reaction.message.content}"
                         )
                         embed.set_author(name=reaction.message.author.display_name, icon_url=reaction.message.author.avatar.url)
                         embed.set_footer(text=f"{emoji} {current_count} | Sent in #{reaction.message.channel.name}")
                         if reaction.message.attachments:
-                            embed.set_image(url=reaction.message.attachments[0].url)
+                            attachment = reaction.message.attachments[0]
+                            embed.set_image(url=attachment.url)
 
                         starboard_msg = await channel.send(embed=embed)
                         starboard_messages[reaction.message.id] = starboard_msg
                         print(f"Message sent to starboard: {embed.to_dict()}")
                 else:
                     print(f"Channel '{channel_id}' not found in guild {guild_id}.")
-            else:
-                print(f"Current count {current_count} has not reached the threshold {threshold}.")
         else:
-            print(f"Reaction emoji '{reaction.emoji}' does not match the configured emoji '{emoji}'.")
+            print("Reaction emoji does not match the configured emoji.")
 
 @bot.event
 async def on_guild_join(guild):
     print(f"Joined a new guild: {guild.name}")
 
-# Start the bot
 bot.run(os.getenv("DISCORD_BOT_TOKEN"))
